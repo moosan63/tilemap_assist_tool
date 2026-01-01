@@ -26,9 +26,19 @@ export interface SpriteRect {
   y: number;
   width: number;
   height: number;
+  comment: string;
+}
+
+export interface SpriteExportItem {
+  name: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  comment: string;
 }
 
 export interface SpriteExport {
   image: string;
-  sprites: Omit<SpriteRect, "id">[];
+  sprites: SpriteExportItem[];
 }

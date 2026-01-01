@@ -157,6 +157,22 @@ body {
   color: #fff;
 }
 
+.import-btn {
+  padding: 6px 16px;
+  border: 1px solid #2196f3;
+  border-radius: 4px;
+  background-color: #2196f3;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.import-btn:hover {
+  background-color: #1976d2;
+}
+
 .export-btn {
   padding: 6px 16px;
   border: 1px solid #4caf50;
@@ -358,6 +374,27 @@ body {
 .sprite-item-name:focus {
   background-color: #0f3460;
   outline: none;
+}
+
+.sprite-item-comment {
+  width: 100%;
+  font-size: 0.75rem;
+  color: #aaa;
+  background: none;
+  border: none;
+  border-bottom: 1px dashed #0f3460;
+  padding: 4px;
+  margin-bottom: 4px;
+}
+
+.sprite-item-comment:focus {
+  background-color: #0f3460;
+  outline: none;
+  color: #eee;
+}
+
+.sprite-item-comment::placeholder {
+  color: #555;
 }
 
 .sprite-item-info {

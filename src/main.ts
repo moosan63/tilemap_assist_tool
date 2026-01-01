@@ -1,6 +1,7 @@
 import "./style.css";
 import { TilemapViewer } from "./TilemapViewer";
 import { SpriteEditor } from "./SpriteEditor";
+import * as TOML from "smol-toml";
 
 class App {
   // Tilemap
@@ -222,9 +223,13 @@ class App {
       this.updateSpriteZoomLevel();
     });
 
-    // Export JSON
-    document.getElementById("export-json")!.addEventListener("click", () => {
-      this.exportJSON();
+    // Import/Export TOML
+    document.getElementById("import-toml")!.addEventListener("change", (e) => {
+      this.importTOML(e);
+    });
+
+    document.getElementById("export-toml")!.addEventListener("click", () => {
+      this.exportTOML();
     });
 
     // Sprite editor callbacks
@@ -354,6 +359,7 @@ class App {
           <input type="text" class="sprite-item-name" value="${sprite.name}" data-id="${sprite.id}" />
           <button class="sprite-item-delete" data-id="${sprite.id}">削除</button>
         </div>
+        <input type="text" class="sprite-item-comment" value="${sprite.comment}" data-id="${sprite.id}" placeholder="コメント..." />
         <div class="sprite-item-info">x:${sprite.x} y:${sprite.y} w:${sprite.width} h:${sprite.height}</div>
       </div>
     `
@@ -364,7 +370,11 @@ class App {
     this.spriteList.querySelectorAll(".sprite-item").forEach((item) => {
       item.addEventListener("click", (e) => {
         const target = e.target as HTMLElement;
-        if (target.classList.contains("sprite-item-name") || target.classList.contains("sprite-item-delete")) {
+        if (
+          target.classList.contains("sprite-item-name") ||
+          target.classList.contains("sprite-item-comment") ||
+          target.classList.contains("sprite-item-delete")
+        ) {
           return;
         }
         const id = item.getAttribute("data-id");
@@ -381,6 +391,16 @@ class App {
         const id = target.getAttribute("data-id");
         if (id) {
           this.spriteEditor.updateSpriteName(id, target.value);
+        }
+      });
+    });
+
+    this.spriteList.querySelectorAll(".sprite-item-comment").forEach((input) => {
+      input.addEventListener("change", (e) => {
+        const target = e.target as HTMLInputElement;
+        const id = target.getAttribute("data-id");
+        if (id) {
+          this.spriteEditor.updateSpriteComment(id, target.value);
         }
       });
     });
@@ -407,19 +427,93 @@ class App {
     });
   }
 
-  private exportJSON(): void {
+  private exportTOML(): void {
     const data = this.spriteEditor.exportJSON();
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
+
+    let tomlStr = `image = "${data.image}"\n`;
+
+    for (const sprite of data.sprites) {
+      tomlStr += "\n";
+      if (sprite.comment) {
+        tomlStr += `# ${sprite.comment}\n`;
+      }
+      tomlStr += "[[sprites]]\n";
+      tomlStr += `name = "${sprite.name}"\n`;
+      tomlStr += `x = ${sprite.x}\n`;
+      tomlStr += `y = ${sprite.y}\n`;
+      tomlStr += `width = ${sprite.width}\n`;
+      tomlStr += `height = ${sprite.height}\n`;
+    }
+
+    const blob = new Blob([tomlStr], { type: "application/toml" });
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = data.image.replace(/\.[^.]+$/, "") + "_sprites.json";
+    a.download = data.image.replace(/\.[^.]+$/, "") + "_sprites.toml";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+
+  private importTOML(e: Event): void {
+    const input = e.target as HTMLInputElement;
+    if (!input.files || !input.files[0]) return;
+
+    const file = input.files[0];
+    const reader = new FileReader();
+
+    reader.onload = (ev) => {
+      try {
+        const tomlText = ev.target?.result as string;
+        const data = TOML.parse(tomlText) as {
+          sprites?: Array<{ name: string; x: number; y: number; width: number; height: number }>;
+        };
+
+        // コメントを抽出（smol-tomlはコメントを保持しないので手動で解析）
+        const comments = this.extractCommentsFromTOML(tomlText);
+
+        if (data.sprites && Array.isArray(data.sprites)) {
+          const spritesWithComments = data.sprites.map((sprite, index) => ({
+            ...sprite,
+            comment: comments[index] || "",
+          }));
+          this.spriteEditor.importSprites({ sprites: spritesWithComments });
+        }
+      } catch (err) {
+        console.error("TOML parse error:", err);
+        alert("TOMLの読み込みに失敗しました");
+      }
+    };
+
+    reader.readAsText(file);
+    input.value = "";
+  }
+
+  // [[sprites]] ブロックの直前にあるコメントを抽出
+  private extractCommentsFromTOML(tomlText: string): string[] {
+    const comments: string[] = [];
+    const lines = tomlText.split("\n");
+
+    let pendingComment = "";
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+
+      if (line.startsWith("#")) {
+        // コメント行: # の後の空白を除去して保存
+        pendingComment = line.slice(1).trim();
+      } else if (line === "[[sprites]]") {
+        // [[sprites]] ブロックの開始: 直前のコメントを保存
+        comments.push(pendingComment);
+        pendingComment = "";
+      } else if (line !== "") {
+        // 空行でない他の行があればコメントをリセット
+        pendingComment = "";
+      }
+    }
+
+    return comments;
   }
 }
 

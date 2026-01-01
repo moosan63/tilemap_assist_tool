@@ -22,7 +22,7 @@ itch.io等で取得したタイルマップ素材の座標確認や、UIスプ�
 - スプライトシート画像の読み込み
 - 矩形ツールでスプライト領域を定義
 - スプライト名の編集
-- JSON形式でエクスポート（Shoebox風）
+- TOML形式でエクスポート/インポート（コメント記述可能）
 
 ## 使い方
 
@@ -47,18 +47,29 @@ npm run dev
 |------|------|
 | 選択ツール | スプライトをクリックで選択、ドラッグでパン |
 | 矩形追加ツール | ドラッグで範囲指定 → スプライト追加 |
-| Export JSON | 定義をJSONファイルとしてダウンロード |
+| Import TOML | 既存のTOMLを読み込んで作業を再開 |
+| Export TOML | 定義をTOMLファイルとしてダウンロード |
 
-### 出力JSON形式
+### 出力TOML形式
 
-```json
-{
-  "image": "ui_sheet.png",
-  "sprites": [
-    { "name": "button_normal", "x": 0, "y": 0, "width": 64, "height": 32 },
-    { "name": "button_hover", "x": 64, "y": 0, "width": 64, "height": 32 }
-  ]
-}
+```toml
+image = "ui_sheet.png"
+
+# ボタン通常状態
+[[sprites]]
+name = "button_normal"
+x = 0
+y = 0
+width = 64
+height = 32
+
+# ボタンホバー状態
+[[sprites]]
+name = "button_hover"
+x = 64
+y = 0
+width = 64
+height = 32
 ```
 
 ## 開発

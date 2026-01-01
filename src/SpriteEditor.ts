@@ -112,6 +112,7 @@ export class SpriteEditor {
         y: this.currentRect.y,
         width: this.currentRect.width,
         height: this.currentRect.height,
+        comment: "",
       };
       this.sprites.push(sprite);
       this.selectedId = id;
@@ -244,6 +245,43 @@ export class SpriteEditor {
     this.render();
   }
 
+  importSprites(data: { sprites: Array<{ name: string; x: number; y: number; width: number; height: number; comment?: string }> }): void {
+    for (const sprite of data.sprites) {
+      this.sprites.push({
+        id: this.generateId(),
+        name: sprite.name,
+        x: sprite.x,
+        y: sprite.y,
+        width: sprite.width,
+        height: sprite.height,
+        comment: sprite.comment || "",
+      });
+    }
+    if (this.onSpritesChange) {
+      this.onSpritesChange();
+    }
+    this.render();
+  }
+
+  updateSpriteComment(id: string, comment: string): void {
+    const sprite = this.sprites.find((s) => s.id === id);
+    if (sprite) {
+      sprite.comment = comment;
+    }
+  }
+
+  clearSprites(): void {
+    this.sprites = [];
+    this.selectedId = null;
+    if (this.onSpritesChange) {
+      this.onSpritesChange();
+    }
+    if (this.onSelectionChange) {
+      this.onSelectionChange(null);
+    }
+    this.render();
+  }
+
   setScale(scale: number): void {
     const centerX = this.canvas.width / 2;
     const centerY = this.canvas.height / 2;
@@ -359,12 +397,13 @@ export class SpriteEditor {
   exportJSON(): SpriteExport {
     return {
       image: this.imageName,
-      sprites: this.sprites.map(({ name, x, y, width, height }) => ({
+      sprites: this.sprites.map(({ name, x, y, width, height, comment }) => ({
         name,
         x,
         y,
         width,
         height,
+        comment,
       })),
     };
   }

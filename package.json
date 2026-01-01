@@ -11,5 +11,8 @@
   "devDependencies": {
     "typescript": "^5.7.2",
     "vite": "^6.0.0"
+  },
+  "dependencies": {
+    "smol-toml": "^1.6.0"
   }
 }
