@@ -18,3 +18,17 @@ export interface TileInfo {
   mouseX: number;
   mouseY: number;
 }
+
+export interface SpriteRect {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface SpriteExport {
+  image: string;
+  sprites: Omit<SpriteRect, "id">[];
+}

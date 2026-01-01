@@ -1,26 +1,47 @@
 import "./style.css";
 import { TilemapViewer } from "./TilemapViewer";
+import { SpriteEditor } from "./SpriteEditor";
 
 class App {
+  // Tilemap
   private viewer: TilemapViewer;
   private fileInput: HTMLInputElement;
   private tileWidthInput: HTMLInputElement;
   private tileHeightInput: HTMLInputElement;
   private showIndexCheckbox: HTMLInputElement;
   private dropZone: HTMLElement;
+  private canvasContainer: HTMLElement;
   private canvas: HTMLCanvasElement;
+  private bgWhiteCheckbox: HTMLInputElement;
   private imageInfo: HTMLElement;
   private tileInfo: HTMLElement;
   private hoverInfo: HTMLElement;
   private zoomLevel: HTMLElement;
   private tooltip: HTMLElement;
 
+  // Sprite Editor
+  private spriteEditor: SpriteEditor;
+  private spriteFileInput: HTMLInputElement;
+  private spriteDropZone: HTMLElement;
+  private spriteCanvasContainer: HTMLElement;
+  private spriteCanvas: HTMLCanvasElement;
+  private spriteBgWhiteCheckbox: HTMLInputElement;
+  private spriteImageInfo: HTMLElement;
+  private spriteCount: HTMLElement;
+  private spriteZoomLevel: HTMLElement;
+  private spriteList: HTMLElement;
+  private toolSelect: HTMLButtonElement;
+  private toolRect: HTMLButtonElement;
+
   constructor() {
+    // Tilemap elements
     this.fileInput = document.getElementById("file-input") as HTMLInputElement;
     this.tileWidthInput = document.getElementById("tile-width") as HTMLInputElement;
     this.tileHeightInput = document.getElementById("tile-height") as HTMLInputElement;
     this.showIndexCheckbox = document.getElementById("show-index") as HTMLInputElement;
+    this.bgWhiteCheckbox = document.getElementById("bg-white") as HTMLInputElement;
     this.dropZone = document.getElementById("drop-zone") as HTMLElement;
+    this.canvasContainer = document.getElementById("canvas-container") as HTMLElement;
     this.canvas = document.getElementById("canvas") as HTMLCanvasElement;
     this.imageInfo = document.getElementById("image-info") as HTMLElement;
     this.tileInfo = document.getElementById("tile-info") as HTMLElement;
@@ -28,11 +49,53 @@ class App {
     this.zoomLevel = document.getElementById("zoom-level") as HTMLElement;
     this.tooltip = document.getElementById("tooltip") as HTMLElement;
 
+    // Sprite editor elements
+    this.spriteFileInput = document.getElementById("sprite-file-input") as HTMLInputElement;
+    this.spriteDropZone = document.getElementById("sprite-drop-zone") as HTMLElement;
+    this.spriteCanvasContainer = document.getElementById("sprite-canvas-container") as HTMLElement;
+    this.spriteCanvas = document.getElementById("sprite-canvas") as HTMLCanvasElement;
+    this.spriteBgWhiteCheckbox = document.getElementById("sprite-bg-white") as HTMLInputElement;
+    this.spriteImageInfo = document.getElementById("sprite-image-info") as HTMLElement;
+    this.spriteCount = document.getElementById("sprite-count") as HTMLElement;
+    this.spriteZoomLevel = document.getElementById("sprite-zoom-level") as HTMLElement;
+    this.spriteList = document.getElementById("sprite-list") as HTMLElement;
+    this.toolSelect = document.getElementById("tool-select") as HTMLButtonElement;
+    this.toolRect = document.getElementById("tool-rect") as HTMLButtonElement;
+
     this.viewer = new TilemapViewer(this.canvas);
-    this.setupEventListeners();
+    this.spriteEditor = new SpriteEditor(this.spriteCanvas);
+
+    this.setupTabListeners();
+    this.setupTilemapListeners();
+    this.setupSpriteEditorListeners();
   }
 
-  private setupEventListeners(): void {
+  private setupTabListeners(): void {
+    const tabs = document.querySelectorAll(".tab");
+    const tabContents = document.querySelectorAll(".tab-content");
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const targetTab = tab.getAttribute("data-tab");
+
+        tabs.forEach((t) => t.classList.remove("active"));
+        tabContents.forEach((c) => c.classList.remove("active"));
+
+        tab.classList.add("active");
+        document.getElementById(`${targetTab}-tab`)?.classList.add("active");
+
+        if (targetTab === "tilemap") {
+          this.viewer.resizeCanvas();
+          this.viewer.render();
+        } else if (targetTab === "sprite") {
+          this.spriteEditor.resizeCanvas();
+          this.spriteEditor.render();
+        }
+      });
+    });
+  }
+
+  private setupTilemapListeners(): void {
     this.fileInput.addEventListener("change", this.handleFileSelect.bind(this));
 
     this.tileWidthInput.addEventListener("input", this.handleTileSizeChange.bind(this));
@@ -40,6 +103,10 @@ class App {
 
     this.showIndexCheckbox.addEventListener("change", () => {
       this.viewer.setShowIndex(this.showIndexCheckbox.checked);
+    });
+
+    this.bgWhiteCheckbox.addEventListener("change", () => {
+      this.canvasContainer.classList.toggle("bg-white", this.bgWhiteCheckbox.checked);
     });
 
     const container = document.getElementById("canvas-container")!;
@@ -80,10 +147,94 @@ class App {
     window.addEventListener("resize", () => {
       this.viewer.resizeCanvas();
       this.viewer.render();
+      this.spriteEditor.resizeCanvas();
+      this.spriteEditor.render();
     });
 
     this.canvas.addEventListener("wheel", () => {
       this.updateZoomLevel();
+    });
+  }
+
+  private setupSpriteEditorListeners(): void {
+    this.spriteFileInput.addEventListener("change", (e) => {
+      const input = e.target as HTMLInputElement;
+      if (input.files && input.files[0]) {
+        this.loadSpriteImage(input.files[0]);
+      }
+    });
+
+    const container = document.getElementById("sprite-canvas-container")!;
+    container.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      this.spriteDropZone.classList.add("drag-over");
+    });
+    container.addEventListener("dragleave", () => {
+      this.spriteDropZone.classList.remove("drag-over");
+    });
+    container.addEventListener("drop", (e) => {
+      e.preventDefault();
+      this.spriteDropZone.classList.remove("drag-over");
+      if (e.dataTransfer?.files && e.dataTransfer.files[0]) {
+        const file = e.dataTransfer.files[0];
+        if (file.type.startsWith("image/")) {
+          this.loadSpriteImage(file);
+        }
+      }
+    });
+
+    // Tool buttons
+    this.toolSelect.addEventListener("click", () => {
+      this.spriteEditor.setTool("select");
+      this.toolSelect.classList.add("active");
+      this.toolRect.classList.remove("active");
+    });
+
+    this.toolRect.addEventListener("click", () => {
+      this.spriteEditor.setTool("rect");
+      this.toolRect.classList.add("active");
+      this.toolSelect.classList.remove("active");
+    });
+
+    this.spriteBgWhiteCheckbox.addEventListener("change", () => {
+      this.spriteCanvasContainer.classList.toggle("bg-white", this.spriteBgWhiteCheckbox.checked);
+    });
+
+    // Zoom controls
+    document.getElementById("sprite-zoom-in")!.addEventListener("click", () => {
+      const newScale = Math.min(10, this.spriteEditor.getScale() * 1.2);
+      this.spriteEditor.setScale(newScale);
+      this.updateSpriteZoomLevel();
+    });
+
+    document.getElementById("sprite-zoom-out")!.addEventListener("click", () => {
+      const newScale = Math.max(0.1, this.spriteEditor.getScale() / 1.2);
+      this.spriteEditor.setScale(newScale);
+      this.updateSpriteZoomLevel();
+    });
+
+    document.getElementById("sprite-zoom-reset")!.addEventListener("click", () => {
+      this.spriteEditor.resetView();
+      this.updateSpriteZoomLevel();
+    });
+
+    this.spriteCanvas.addEventListener("wheel", () => {
+      this.updateSpriteZoomLevel();
+    });
+
+    // Export JSON
+    document.getElementById("export-json")!.addEventListener("click", () => {
+      this.exportJSON();
+    });
+
+    // Sprite editor callbacks
+    this.spriteEditor.setOnSpritesChange(() => {
+      this.updateSpriteList();
+      this.updateSpriteCount();
+    });
+
+    this.spriteEditor.setOnSelectionChange((id) => {
+      this.updateSpriteListSelection(id);
     });
   }
 
@@ -132,6 +283,22 @@ class App {
     reader.readAsDataURL(file);
   }
 
+  private loadSpriteImage(file: File): void {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        this.spriteDropZone.classList.add("hidden");
+        this.spriteEditor.setImage(img, file.name);
+        this.spriteEditor.setScale(2);
+        this.updateSpriteImageInfo();
+        this.updateSpriteZoomLevel();
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+
   private handleTileSizeChange(): void {
     const width = parseInt(this.tileWidthInput.value, 10) || 32;
     const height = parseInt(this.tileHeightInput.value, 10) || 32;
@@ -156,6 +323,103 @@ class App {
   private updateZoomLevel(): void {
     const scale = this.viewer.getScale();
     this.zoomLevel.textContent = `${Math.round(scale * 100)}%`;
+  }
+
+  private updateSpriteImageInfo(): void {
+    const info = this.spriteEditor.getImageInfo();
+    if (info) {
+      this.spriteImageInfo.textContent = `画像: ${info.width} × ${info.height} px`;
+    }
+  }
+
+  private updateSpriteCount(): void {
+    const count = this.spriteEditor.getSprites().length;
+    this.spriteCount.textContent = `スプライト: ${count}`;
+  }
+
+  private updateSpriteZoomLevel(): void {
+    const scale = this.spriteEditor.getScale();
+    this.spriteZoomLevel.textContent = `${Math.round(scale * 100)}%`;
+  }
+
+  private updateSpriteList(): void {
+    const sprites = this.spriteEditor.getSprites();
+    const selectedId = this.spriteEditor.getSelectedId();
+
+    this.spriteList.innerHTML = sprites
+      .map(
+        (sprite) => `
+      <div class="sprite-item ${sprite.id === selectedId ? "selected" : ""}" data-id="${sprite.id}">
+        <div class="sprite-item-header">
+          <input type="text" class="sprite-item-name" value="${sprite.name}" data-id="${sprite.id}" />
+          <button class="sprite-item-delete" data-id="${sprite.id}">削除</button>
+        </div>
+        <div class="sprite-item-info">x:${sprite.x} y:${sprite.y} w:${sprite.width} h:${sprite.height}</div>
+      </div>
+    `
+      )
+      .join("");
+
+    // Add event listeners
+    this.spriteList.querySelectorAll(".sprite-item").forEach((item) => {
+      item.addEventListener("click", (e) => {
+        const target = e.target as HTMLElement;
+        if (target.classList.contains("sprite-item-name") || target.classList.contains("sprite-item-delete")) {
+          return;
+        }
+        const id = item.getAttribute("data-id");
+        if (id) {
+          this.spriteEditor.setSelectedId(id);
+          this.updateSpriteListSelection(id);
+        }
+      });
+    });
+
+    this.spriteList.querySelectorAll(".sprite-item-name").forEach((input) => {
+      input.addEventListener("change", (e) => {
+        const target = e.target as HTMLInputElement;
+        const id = target.getAttribute("data-id");
+        if (id) {
+          this.spriteEditor.updateSpriteName(id, target.value);
+        }
+      });
+    });
+
+    this.spriteList.querySelectorAll(".sprite-item-delete").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const id = (e.target as HTMLElement).getAttribute("data-id");
+        if (id) {
+          this.spriteEditor.deleteSprite(id);
+        }
+      });
+    });
+  }
+
+  private updateSpriteListSelection(selectedId: string | null): void {
+    this.spriteList.querySelectorAll(".sprite-item").forEach((item) => {
+      const id = item.getAttribute("data-id");
+      if (id === selectedId) {
+        item.classList.add("selected");
+      } else {
+        item.classList.remove("selected");
+      }
+    });
+  }
+
+  private exportJSON(): void {
+    const data = this.spriteEditor.exportJSON();
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = data.image.replace(/\.[^.]+$/, "") + "_sprites.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 }
 
